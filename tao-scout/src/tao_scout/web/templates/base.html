@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}TAO-Scout{% endblock %}</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; }
+    .stale { background: #fee2e2; color: #991b1b; }
+    .fresh { background: #dcfce7; color: #14532d; }
+    .axis-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .axis-bar > div { height: 100%; background: #2563eb; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <header class="border-b bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <a href="/" class="font-semibold text-lg">TAO-Scout</a>
+        <span class="badge fresh">read-only</span>
+      </div>
+      <nav class="flex gap-4 text-sm">
+        <a href="/" class="hover:underline">Home</a>
+        <a href="/rank" class="hover:underline">Rank</a>
+        <a href="/settings" class="hover:underline">Settings</a>
+        <a href="/docs" class="hover:underline" target="_blank">API</a>
+      </nav>
+    </div>
+  </header>
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500">
+    Strictly local. Strictly read-only. Not financial advice. SDK calls audited in CLAUDE.adoc.
+  </footer>
+</body>
+</html>

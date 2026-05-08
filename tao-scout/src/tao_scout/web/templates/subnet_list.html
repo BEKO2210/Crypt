@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Subnets · TAO-Scout{% endblock %}
+{% block content %}
+
+{% if any_stale %}
+<div class="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+  Some cached chain data is stale. Click <em>Refresh All</em> when you're ready.
+</div>
+{% endif %}
+
+<section class="mb-8">
+  <h2 class="text-base font-semibold mb-3">Continue your research</h2>
+  <div class="grid md:grid-cols-2 gap-3 text-sm">
+    <div class="bg-white rounded border p-3">
+      <div class="text-xs uppercase text-slate-500 mb-1">Recently reviewed</div>
+      {% if rail.last_reviewed %}
+        <ul class="space-y-1">
+        {% for s in rail.last_reviewed %}
+          <li><a class="text-blue-700 hover:underline" href="/subnet/{{ s.netuid }}">#{{ s.netuid }} {{ s.name or "" }}</a></li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-slate-400">No notes yet.</p>
+      {% endif %}
+    </div>
+    <div class="bg-white rounded border p-3">
+      <div class="text-xs uppercase text-slate-500 mb-1">Oldest scores (consider re-scoring)</div>
+      {% if rail.oldest_scored %}
+        <ul class="space-y-1">
+        {% for s in rail.oldest_scored %}
+          <li><a class="text-blue-700 hover:underline" href="/subnet/{{ s.netuid }}">#{{ s.netuid }} {{ s.name or "" }}</a></li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-slate-400">No scores yet.</p>
+      {% endif %}
+    </div>
+    <div class="bg-white rounded border p-3">
+      <div class="text-xs uppercase text-slate-500 mb-1">Stale chain data (&gt;1h)</div>
+      {% if rail.stale_data %}
+        <ul class="space-y-1">
+        {% for s in rail.stale_data %}
+          <li><a class="text-blue-700 hover:underline" href="/subnet/{{ s.netuid }}">#{{ s.netuid }} {{ s.name or "" }}</a></li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-slate-400">All cached rows are fresh.</p>
+      {% endif %}
+    </div>
+    <div class="bg-white rounded border p-3">
+      <div class="text-xs uppercase text-slate-500 mb-1">Unfinished ICM stages</div>
+      {% if rail.unfinished_workspaces %}
+        <ul class="space-y-1">
+        {% for netuid, missing in rail.unfinished_workspaces %}
+          <li>
+            <a class="text-blue-700 hover:underline" href="/subnet/{{ netuid }}">#{{ netuid }}</a>
+            <span class="text-slate-500">missing: {{ missing | join(", ") }}</span>
+          </li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-slate-400">All workspaces complete.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-base font-semibold">Subnets ({{ cached | length }})</h2>
+    <form action="/refresh" method="post">
+      <button class="bg-slate-900 text-white text-sm px-3 py-1 rounded hover:bg-slate-700"
+              type="submit">Refresh All</button>
+    </form>
+  </div>
+  {% if cached %}
+  <div class="bg-white rounded border overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100 text-left">
+        <tr>
+          <th class="p-2">netuid</th>
+          <th class="p-2">name</th>
+          <th class="p-2">emission</th>
+          <th class="p-2">burn (TAO)</th>
+          <th class="p-2">miners / max</th>
+          <th class="p-2">cached</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cached %}
+        <tr class="border-t hover:bg-slate-50">
+          <td class="p-2"><a class="text-blue-700 hover:underline" href="/subnet/{{ c.info.netuid }}">{{ c.info.netuid }}</a></td>
+          <td class="p-2">{{ c.info.name or "—" }}</td>
+          <td class="p-2">{% if c.info.emission is not none %}{{ "%.4f" | format(c.info.emission) }}{% else %}—{% endif %}</td>
+          <td class="p-2">{% if c.info.burn_cost_tao is not none %}{{ "%.2f" | format(c.info.burn_cost_tao) }}{% else %}—{% endif %}</td>
+          <td class="p-2">
+            {% if c.info.n_miners is not none %}{{ c.info.n_miners }}{% else %}?{% endif %}
+            /
+            {% if c.info.max_n is not none %}{{ c.info.max_n }}{% else %}?{% endif %}
+          </td>
+          <td class="p-2">
+            <span class="badge {% if c.is_stale %}stale{% else %}fresh{% endif %}">
+              {{ c.cached_at.strftime("%Y-%m-%d %H:%M") }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded border p-6 text-center text-sm text-slate-500">
+    Cache is empty. Run <code>tao-scout refresh</code> or click <em>Refresh All</em>.
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

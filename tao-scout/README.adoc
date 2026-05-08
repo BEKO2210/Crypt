@@ -1,0 +1,108 @@
+= TAO-Scout
+:toc: macro
+:icons: font
+:source-highlighter: rouge
+:experimental:
+
+[NOTE]
+====
+*Strictly local. Strictly read-only.* This is not a wallet, not a trading
+tool, and not financial advice. TAO-Scout never creates, imports, or signs
+keys, and never submits extrinsics. See `CLAUDE.adoc` for the audited list
+of allowed SDK calls.
+====
+
+TAO-Scout is a research tool that answers, for any Bittensor subnet:
+
+> "Should I spend the next 30 days building for this subnet?"
+
+It pairs *objective on-chain data* (cached, refreshable, auditable) with
+*subjective developer notes* and a *transparent weighted scoring model* on
+six axes. Output is *insight*, not transactions.
+
+toc::[]
+
+== Quick start
+
+[source,bash]
+----
+git clone <this repo>
+cd tao-scout
+
+uv sync
+alembic upgrade head
+tao-scout doctor          # verifies SDK / RPC / DB
+tao-scout serve           # foreground web UI on http://127.0.0.1:8765
+----
+
+In a separate shell, populate the cache:
+
+[source,bash]
+----
+tao-scout refresh --all
+tao-scout list
+----
+
+== Features
+
+* Read-only async chain client (`AsyncSubtensor`) with timeouts and graceful
+  fallbacks. Every SDK attribute is checked against an allow-list *and* a
+  deny-list before any network I/O.
+* SQLite cache: chain reads are persisted; UI shows stale-flag banners
+  rather than substituting zeros.
+* HTMX-driven web UI -- no build step, no npm. Tailwind via CDN.
+* Six-axis scoring with append-only history and an editable weights vector
+  (sum must equal 1.0).
+* "Continue your research" rail on the home page: recently reviewed subnets,
+  oldest scores, stale chain rows, unfinished ICM stages.
+* Per-subnet *Interpreted Context Methodology* workspace under
+  `data/workspaces/netuid-NNN/` with five staged folders, each containing a
+  `CONTEXT.adoc` declaring its Inputs, Process, and Outputs.
+* Symmetrical CLI (`tao-scout`) and HTTP API; both share one service layer.
+* Export / import as JSON or CSV. Round-trip is lossless for JSON.
+
+== Architecture
+
+[source]
+----
++--------------+       +---------------+        +---------------+
+|  Typer CLI   |  -->  | services.py   | <----+ |  FastAPI API  |
++--------------+       +-------+-------+      | +-------+-------+
+                               |              |         |
+                               v              |         v
+                       +-------+-------+      |  +-------+-------+
+                       |  scoring/     |      |  | web/ (HTMX)   |
+                       |  cache (db)   |      |  | templates     |
+                       +-------+-------+      |  +---------------+
+                               |              |
+                               v              |
+                    +----------+-----------+  |
+                    | chain.client (RO)    +--+
+                    | + safety.py guard    |
+                    +----------------------+
+----
+
+== Read-only enforcement
+
+The single source of truth is `src/tao_scout/safety.py`:
+
+* `FORBIDDEN_SDK_METHODS` -- a deny-list of write/sign/key methods that
+  raise `ReadOnlyViolationError` if invoked.
+* `find_forbidden_wallet_imports(...)` -- AST scan of `src/` that fails the
+  build if any wallet/Keypair import sneaks in.
+* `Settings.read_only = True` is `frozen=True` and validates True on init;
+  no env var can flip it.
+* `chain/client.py` keeps a separate `ALLOWED_SDK_METHODS` allow-list. Both
+  checks must pass for an SDK call to proceed.
+
+`tao-scout doctor` reports each invariant separately so a mis-configured
+install is obvious.
+
+== Project layout
+
+See `ROADMAP.adoc` for milestones and `CLAUDE.adoc` for the persistent
+project conventions and SDK audit list.
+
+== License
+
+MIT.

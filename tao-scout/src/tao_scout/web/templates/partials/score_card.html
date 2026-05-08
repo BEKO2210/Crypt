@@ -1,0 +1,23 @@
+<div id="score-card-target" class="bg-white border rounded p-4">
+  <div class="flex items-baseline justify-between">
+    <div>
+      <div class="text-2xl font-semibold">{{ "%.2f" | format(score.weighted_total) }} <span class="text-sm text-slate-500">/ 10</span></div>
+      <div class="text-xs text-slate-500">computed {{ score.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</div>
+    </div>
+  </div>
+  <div class="mt-3 space-y-1 text-xs">
+    {% set keys = [("developer_fit", "Developer Fit"), ("hardware_fit","Hardware Fit"), ("competition_level","Competition (inv)"), ("repo_quality","Repo Quality"), ("reward_potential","Reward Potential"), ("ecosystem_momentum","Ecosystem Momentum")] %}
+    {% for key, label in keys %}
+      {% set raw = score[key] %}
+      {% set w = (score.weights_snapshot[key] or 0) %}
+      {% set contrib = raw * w %}
+      <div>
+        <div class="flex justify-between"><span>{{ label }}</span><span>{{ raw }}/10 × {{ "%.2f" | format(w) }} = {{ "%.2f" | format(contrib) }}</span></div>
+        <div class="axis-bar"><div style="width: {{ raw * 10 }}%"></div></div>
+      </div>
+    {% endfor %}
+  </div>
+  {% if score.rationale %}
+  <pre class="mt-3 text-xs whitespace-pre-wrap bg-slate-50 p-2 rounded">{{ score.rationale }}</pre>
+  {% endif %}
+</div>

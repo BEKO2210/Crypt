@@ -1,0 +1,130 @@
+= TAO-Scout -- Persistent project conventions for Claude Code
+:toc: macro
+:icons: font
+
+This file is loaded as Layer 0 context. Read it in full at the start of every
+session. Code conventions are *non-negotiable* unless the user explicitly
+overrides them in the conversation.
+
+toc::[]
+
+== Hard invariants
+
+. *Read-only at runtime.* `Settings.read_only` is hard-coded `True` and
+  frozen. No code path may flip it.
+. *Async-only chain access.* Use `bittensor.AsyncSubtensor` exclusively.
+  Synchronous `Subtensor` is forbidden.
+. *No wallet, no key, no signing, no extrinsics, ever.* The deny-list lives
+  in `src/tao_scout/safety.py::FORBIDDEN_SDK_METHODS`. The AST scanner in
+  the same module fails the build if `bittensor.wallet` or `Keypair` is
+  imported anywhere in `src/`.
+. *No background polling.* Refresh is always user-triggered (CLI button or
+  HTML form). No cron, no asyncio task, no schedule.
+. *No telemetry, no third-party project integrations, no cloud
+  deployment.* Pure local tool.
+. *No mock data masquerading as chain data.* If RPC fails, surface the
+  error and serve cached values with a visible "stale" banner.
+
+== Audited SDK calls
+
+The chain client (`src/tao_scout/chain/client.py`) keeps an explicit
+allow-list:
+
+[source,python]
+----
+ALLOWED_SDK_METHODS = {
+    "get_current_block",
+    "get_subnets",
+    "get_all_subnets_info",
+    "get_subnet_info",
+    "subnet_exists",
+    "get_total_subnets",
+    "neurons_lite",
+    "get_neurons_lite",
+    "metagraph",
+}
+----
+
+Every call funnels through `_ensure_audited(method_name)` which:
+
+. Asserts `method_name` is *not* in `FORBIDDEN_SDK_METHODS`.
+. Asserts `method_name` *is* in `ALLOWED_SDK_METHODS`.
+
+Adding a new entry is a deliberate audit step. Verify in the upstream SDK
+documentation that the method performs no state change before adding.
+
+== Interpreted Context Methodology (ICM)
+
+Per-subnet research follows the ICM pattern:
+
+* `data/workspaces/netuid-NNN/CONTEXT.adoc` -- Layer 1 summary
+* `data/workspaces/netuid-NNN/01-chain/CONTEXT.adoc`
+* `data/workspaces/netuid-NNN/02-repo/CONTEXT.adoc`
+* `data/workspaces/netuid-NNN/03-research/CONTEXT.adoc`
+* `data/workspaces/netuid-NNN/04-scoring/CONTEXT.adoc`
+* `data/workspaces/netuid-NNN/05-rationale/CONTEXT.adoc`
+
+Each stage `CONTEXT.adoc` declares Inputs, Process, and Outputs. The
+"Continue your research" rail on the home page surfaces subnets whose
+workspace has missing or empty stage files. `services.ensure_workspace`
+creates the templates idempotently when the user opens a subnet detail
+page.
+
+== Service-layer rule
+
+All business logic lives in `src/tao_scout/services.py`. The Typer CLI
+(`src/tao_scout/cli/main.py`) and FastAPI routes (`src/tao_scout/api/`)
+*must* be thin wrappers. If they diverge, that is a bug.
+
+== Adding a new scoring axis
+
+. Add the axis tuple in `src/tao_scout/scoring/axes.py::AXES`.
+. Update `DEFAULT_WEIGHTS` in `src/tao_scout/scoring/weights.py` (sum must
+  remain 1.0).
+. Add the column on `Score` and `UserSettings.weights` schema in
+  `src/tao_scout/db/models.py`.
+. Generate an Alembic migration: `alembic revision -m "add axis xxx"`.
+. Update `ScoreInput` in `src/tao_scout/scoring/engine.py`.
+. Update the Pydantic schema in `src/tao_scout/api/schemas.py`.
+. Add the slider/input on `web/templates/subnet_detail.html` and
+  `web/templates/settings.html`.
+. Bump the export schema `version` and document the migration path in
+  `ROADMAP.adoc`.
+
+== Upgrading the bittensor SDK
+
+. Run `tao-scout doctor` against the new version.
+. Inspect each name in `ALLOWED_SDK_METHODS` against the new SDK; if
+  renamed, update the wrapper *and* leave a comment with the rename.
+. Run the test suite. The AST wallet scan and the read-only-call tests
+  must still pass.
+. If any read-only method now also performs a state change (it has
+  happened), remove it from the allow-list immediately.
+
+== Do-not-add list
+
+* Wallet creation, import, unlock, mnemonic handling.
+* `set_weights` / `register` / `add_stake` / any extrinsic.
+* Background tasks, cron, watchdog reconnects.
+* Telemetry, analytics, third-party API calls (other than the configured
+  Bittensor RPC).
+* Multi-user accounts, auth, hosted deploy.
+* Auto-refresh of cached data while serving.
+
+== Logging
+
+`structlog` to stdout in dev. The `_self_audit` step at app start emits a
+warning if any wallet-related env var is present (`BT_WALLET_PATH`, etc.)
+but does not abort -- those vars may belong to unrelated tools.
+
+== Testing posture
+
+* `tests/test_safety.py` runs first (alphabetically and by intent).
+* `tests/test_scoring.py` exercises both math and append-only history.
+* `tests/test_cache.py` covers TTL + stale-while-error.
+* `tests/test_services.py` covers note upsert, settings, rank, ICM
+  workspace scaffold.
+* `tests/test_api.py` smoke-tests every HTTP route via FastAPI's
+  TestClient with a fixture-supplied in-memory DB.
+
+Coverage targets: 80% overall, 95% on `safety.py` + `scoring/`.

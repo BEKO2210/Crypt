@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Subnet {{ cached.info.netuid }} · TAO-Scout{% endblock %}
+{% block content %}
+<a href="/" class="text-sm text-blue-700 hover:underline">&larr; back</a>
+<h1 class="text-xl font-semibold mt-2 mb-4">
+  Subnet #{{ cached.info.netuid }} {% if cached.info.name %}— {{ cached.info.name }}{% endif %}
+</h1>
+
+<div class="grid md:grid-cols-3 gap-6">
+  <section class="md:col-span-2 space-y-6">
+
+    <div id="chain-card" class="bg-white border rounded p-4">
+      {% include "partials/chain_card.html" %}
+    </div>
+
+    <div class="bg-white border rounded p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="font-semibold">Notes</h2>
+        <span class="text-xs text-slate-500">last reviewed {% if note %}{{ note.last_reviewed_at.strftime("%Y-%m-%d %H:%M") }}{% else %}never{% endif %}</span>
+      </div>
+      <form hx-post="/subnet/{{ cached.info.netuid }}/note"
+            hx-target="#note-status"
+            hx-swap="innerHTML"
+            class="space-y-3 text-sm">
+        <div class="grid md:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs">task type</span>
+            <select name="task_type" class="w-full border rounded p-1">
+              {% set tasks = ["text-gen","image-gen","prediction","signal-processing","audio","multimodal","infra","data","other"] %}
+              <option value="">—</option>
+              {% for t in tasks %}
+                <option value="{{ t }}" {% if note and note.task_type == t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs">repo URL</span>
+            <input name="repo_url" value="{{ note.repo_url if note else '' }}" class="w-full border rounded p-1">
+          </label>
+          <label class="block">
+            <span class="text-xs">hardware required</span>
+            <select name="hardware_required" class="w-full border rounded p-1">
+              {% set hws = ["cpu-only","single-gpu-8gb","single-gpu-24gb","multi-gpu","cluster","unknown"] %}
+              <option value="">—</option>
+              {% for h in hws %}
+                <option value="{{ h }}" {% if note and note.hardware_required == h %}selected{% endif %}>{{ h }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs">entry difficulty</span>
+            <select name="entry_difficulty" class="w-full border rounded p-1">
+              {% set diffs = ["low","medium","high","unknown"] %}
+              <option value="">—</option>
+              {% for d in diffs %}
+                <option value="{{ d }}" {% if note and note.entry_difficulty == d %}selected{% endif %}>{{ d }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-xs">repo quality notes</span>
+          <textarea name="repo_quality_notes" class="w-full border rounded p-1" rows="2">{{ note.repo_quality_notes if note else '' }}</textarea>
+        </label>
+        <label class="block">
+          <span class="text-xs">risk notes</span>
+          <textarea name="risk_notes" class="w-full border rounded p-1" rows="2">{{ note.risk_notes if note else '' }}</textarea>
+        </label>
+        <label class="block">
+          <span class="text-xs">opportunity notes</span>
+          <textarea name="opportunity_notes" class="w-full border rounded p-1" rows="2">{{ note.opportunity_notes if note else '' }}</textarea>
+        </label>
+        <label class="block">
+          <span class="text-xs">tags (comma-separated)</span>
+          <input name="tags" value="{{ note.tags | join(', ') if note and note.tags else '' }}" class="w-full border rounded p-1">
+        </label>
+        <div class="flex items-center gap-3">
+          <button class="bg-slate-900 text-white px-3 py-1 rounded">Save</button>
+          <span id="note-status" class="text-xs text-slate-500"></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="bg-white border rounded p-4">
+      <h2 class="font-semibold mb-2">Score this subnet</h2>
+      <p class="text-xs text-slate-500 mb-3">Each axis 0–10. Inverted axes flagged in their tooltip.</p>
+      <form hx-post="/subnet/{{ cached.info.netuid }}/score"
+            hx-target="#score-card-target"
+            hx-swap="outerHTML"
+            class="grid md:grid-cols-2 gap-4 text-sm">
+        {% for axis in AXES %}
+          <label class="block" title="{{ axis.description }} | 0={{ axis.zero_means }} | 10={{ axis.ten_means }}{% if axis.inverted %} (INVERTED){% endif %}">
+            <span class="text-xs font-medium">{{ axis.label }}</span>
+            <input type="range" min="0" max="10" step="1"
+                   name="{{ axis.key }}"
+                   value="{% if latest_score %}{{ latest_score[axis.key] }}{% else %}5{% endif %}"
+                   x-data="{ v: {% if latest_score %}{{ latest_score[axis.key] }}{% else %}5{% endif %} }"
+                   x-on:input="v = $event.target.value; $refs.out_{{ axis.key }}.textContent = v"
+                   class="w-full">
+            <output x-ref="out_{{ axis.key }}" class="text-xs text-slate-500">{% if latest_score %}{{ latest_score[axis.key] }}{% else %}5{% endif %}</output>
+          </label>
+        {% endfor %}
+        <label class="block md:col-span-2">
+          <span class="text-xs">rationale (optional — auto-generated if empty)</span>
+          <textarea name="rationale" rows="3" class="w-full border rounded p-1"></textarea>
+        </label>
+        <div class="md:col-span-2">
+          <button class="bg-blue-700 text-white px-3 py-1 rounded">Save score</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="score-card-target" class="bg-white border rounded p-4">
+      {% if latest_score %}
+        {% set score = latest_score %}
+        {% include "partials/score_card.html" %}
+      {% else %}
+        <p class="text-sm text-slate-500">No score yet.</p>
+      {% endif %}
+    </div>
+
+  </section>
+
+  <aside class="space-y-6">
+    <div class="bg-white border rounded p-4 text-sm">
+      <h3 class="font-semibold mb-2">ICM Workspace</h3>
+      <p class="text-xs text-slate-500 mb-2">
+        Layered context lives on disk under
+        <code>data/workspaces/netuid-{{ "%03d" | format(cached.info.netuid) }}/</code>.
+      </p>
+      <ul class="space-y-1">
+        {% set stages = ["01-chain","02-repo","03-research","04-scoring","05-rationale"] %}
+        {% for stage in stages %}
+        <li class="flex items-center gap-2">
+          <span class="badge {% if stage in missing_stages %}stale{% else %}fresh{% endif %}">
+            {{ "missing" if stage in missing_stages else "ready" }}
+          </span>
+          <span>{{ stage }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="bg-white border rounded p-4 text-sm">
+      <h3 class="font-semibold mb-2">Score history</h3>
+      {% if scores %}
+      <ul class="space-y-2">
+      {% for s in scores %}
+        <li class="border-b pb-2 last:border-0">
+          <div class="flex justify-between">
+            <strong>{{ "%.2f" | format(s.weighted_total) }}</strong>
+            <span class="text-xs text-slate-500">{{ s.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+          </div>
+          <div class="text-xs text-slate-500">
+            df={{ s.developer_fit }} hf={{ s.hardware_fit }} cl={{ s.competition_level }}
+            rq={{ s.repo_quality }} rp={{ s.reward_potential }} em={{ s.ecosystem_momentum }}
+          </div>
+        </li>
+      {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-slate-500 text-xs">No scores recorded.</p>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

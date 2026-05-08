@@ -1,0 +1,48 @@
+= RUN_LOG
+
+== 2026-05-08 -- Session 1
+
+*Goal:* Build M0-M3 of TAO-Scout end to end. Wire AsciiDoc docs and ICM
+workspace scaffold per user clarification.
+
+*Done:*
+
+* M0: `pyproject.toml` with pinned deps, package layout, `.env.example`,
+  `.gitignore`.
+* `safety.py` with `FORBIDDEN_SDK_METHODS` deny-list, `assert_read_only_call`,
+  `find_forbidden_wallet_imports` AST scan, `warn_if_wallet_env_present`.
+* `config.py` with frozen `read_only=True` (Pydantic v2 `frozen=True`,
+  validator rejects override).
+* SQLAlchemy 2.x async models for `Subnet`, `Note`, `Score`, `Snapshot`,
+  `UserSettings`. Alembic baseline migration.
+* M1: `chain/client.py` (AsyncSubtensor wrapper) with both deny-list and
+  allow-list. `chain/cache.py` with TTL + stale-while-error fallback.
+* M2: scoring engine (six axes, weighted total, rationale skeleton),
+  service layer (notes upsert, scores append-only, rank, settings), ICM
+  workspace scaffold under `data/workspaces/netuid-NNN/`.
+* M3: HTTP API (subnets, notes, scores, rank, settings, export, import,
+  health). HTMX web UI (subnet list with Continue rail, subnet detail,
+  rank, settings).
+* CLI: `list`, `show`, `refresh`, `note add/edit`, `score`, `rank`,
+  `export`, `import`, `serve`, `doctor`.
+* Tests: `test_safety.py` (incl. AST scan + deny-list parametrized),
+  `test_scoring.py` (math + append-only), `test_cache.py` (TTL +
+  stale-while-error), `test_services.py` (notes, rank, settings, ICM
+  workspaces, Continue rail), `test_api.py` (full HTTP flow).
+* Docs in AsciiDoc: `README.adoc`, `CLAUDE.adoc`, `ROADMAP.adoc`,
+  `RUN_LOG.adoc`.
+
+*Decisions:*
+
+* AsciiDoc adopted for top-level docs from M0 (user request).
+* ICM workspaces scaffolded eagerly when the user opens a subnet detail
+  page; Continue rail surfaces missing stages.
+* No background polling, no daemon mode, foreground `tao-scout serve`
+  only -- per spec section 7 and explicit user confirmation.
+
+*Blocked:* none.
+
+*SDK version:* tracked at runtime via `tao-scout doctor`.
+
+*Next:* M3 `tao-scout snapshot` command, M4 list filters, sparklines,
+README screenshots.

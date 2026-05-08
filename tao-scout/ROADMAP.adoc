@@ -1,0 +1,48 @@
+= TAO-Scout Roadmap
+
+== M0 -- Foundation
+
+* [x] Project scaffolding (`pyproject.toml`, package layout, `.env.example`)
+* [x] `config.py` with frozen `read_only=True`
+* [x] `safety.py` with deny-list + AST wallet-import scanner
+* [x] SQLAlchemy models for Subnet, Note, Score, Snapshot, UserSettings
+* [x] Alembic baseline migration
+* [x] `tao-scout doctor`
+* [x] `README.adoc`, `CLAUDE.adoc`, `ROADMAP.adoc`, `RUN_LOG.adoc`
+
+== M1 -- Read-only chain path
+
+* [x] `chain/client.py` (AsyncSubtensor wrapper, allow-list + deny-list)
+* [x] `chain/cache.py` (TTL, stale-while-error fallback)
+* [x] `tao-scout list` / `tao-scout refresh`
+* [x] Web `/` subnet list
+
+== M2 -- Notes, scoring, ICM workspaces
+
+* [x] Note upsert / Score append-only
+* [x] Web `/subnet/{netuid}` with HTMX note autosave + scoring form
+* [x] Per-subnet ICM workspace scaffold under `data/workspaces/`
+* [x] "Continue your research" rail on home page
+
+== M3 -- Rank, export, snapshots
+
+* [x] `/rank` page + `tao-scout rank`
+* [x] Export / import (JSON; CSV via web)
+* [ ] `tao-scout snapshot` command (records `payload_json` to the
+  `snapshots` table for diffing over time)
+
+== M4 -- Polish
+
+* [x] `/settings` (skill profile, hardware profile, RPC, weights, TTL)
+* [ ] List filters (task type, hardware, score range, has-notes toggle)
+* [ ] Score-history sparklines on detail page (server-rendered SVG)
+* [ ] README screenshots
+
+== Out of scope (v1)
+
+* Multi-user / auth
+* Hosted deployment
+* Wallet integration of any kind
+* Auto-refresh / scheduled jobs
+* Cross-subnet meta-analysis
+* ML-based scoring suggestions
