@@ -15,9 +15,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any, AsyncIterator
+from typing import Any
 
 from tao_scout.chain.models import ChainStatus, SubnetInfo
 from tao_scout.config import get_settings
@@ -157,7 +158,7 @@ class ReadOnlyChainClient:
         self.timeout = s.rpc_timeout_seconds
         self._subtensor: Any = None
 
-    async def __aenter__(self) -> "ReadOnlyChainClient":
+    async def __aenter__(self) -> ReadOnlyChainClient:
         await self._connect()
         return self
 
@@ -186,7 +187,7 @@ class ReadOnlyChainClient:
             )
             if connect is not None:
                 await asyncio.wait_for(connect(), timeout=self.timeout)
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise ChainUnavailableError(
                 f"connect to {self.rpc_url} timed out after {self.timeout}s"
             ) from e
@@ -221,7 +222,7 @@ class ReadOnlyChainClient:
             if asyncio.iscoroutine(result):
                 result = await asyncio.wait_for(result, timeout=self.timeout)
             return result
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise ChainUnavailableError(
                 f"{method_name} timed out after {self.timeout}s"
             ) from e

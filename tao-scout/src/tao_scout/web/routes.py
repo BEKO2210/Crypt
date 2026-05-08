@@ -20,7 +20,7 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 router = APIRouter()
 
 
-def get_templates() -> "Jinja2Templates":  # type: ignore[name-defined]
+def get_templates() -> Jinja2Templates:  # type: ignore[name-defined]
     from fastapi.templating import Jinja2Templates
 
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -31,7 +31,12 @@ def get_templates() -> "Jinja2Templates":  # type: ignore[name-defined]
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request, session: AsyncSession = Depends(db_session)) -> HTMLResponse:
+async def home(
+    request: Request,
+    msg: str | None = None,
+    kind: str | None = None,
+    session: AsyncSession = Depends(db_session),
+) -> HTMLResponse:
     cached = await services.get_cached_subnets(session)
     rail = await services.build_continue_rail(
         session,
@@ -51,6 +56,8 @@ async def home(request: Request, session: AsyncSession = Depends(db_session)) ->
             "any_stale": any_stale,
             "settings": settings,
             "now": datetime.now(UTC),
+            "flash_msg": msg,
+            "flash_kind": kind if kind in {"ok", "error"} else None,
         },
     )
 
@@ -98,6 +105,9 @@ async def submit_note(
     opportunity_notes: str = Form(""),
     tags: str = Form(""),
 ) -> HTMLResponse:
+    cached = await services.get_cached_subnet(session, netuid)
+    if cached is None:
+        raise HTTPException(status_code=404, detail="subnet not in cache; refresh first")
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
     note = await services.upsert_note(
         session,
@@ -176,8 +186,17 @@ async def refresh_one_html(
 async def refresh_all_html(
     request: Request, session: AsyncSession = Depends(db_session)
 ) -> RedirectResponse:
-    await services.refresh_all(session)
-    return RedirectResponse(url="/", status_code=303)
+    report = await services.refresh_all(session)
+    if report.error:
+        msg = f"chain unreachable: {report.error}; serving cached data"
+        kind = "error"
+    else:
+        msg = f"refreshed {len(report.refreshed)} subnet(s)"
+        kind = "ok"
+    from urllib.parse import urlencode
+
+    qs = urlencode({"msg": msg, "kind": kind})
+    return RedirectResponse(url=f"/?{qs}", status_code=303)
 
 
 @router.get("/rank", response_class=HTMLResponse)

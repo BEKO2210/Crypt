@@ -6,7 +6,8 @@ Weights are a mapping ``axis_key -> float``. They MUST cover every axis in
 
 from __future__ import annotations
 
-from typing import Final, Mapping
+from collections.abc import Mapping
+from typing import Final
 
 from tao_scout.scoring.axes import AXIS_KEYS
 

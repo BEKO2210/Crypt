@@ -149,4 +149,4 @@ class UserSettings(Base):
     )
 
 
-__all__ = ["Base", "Subnet", "Note", "Score", "Snapshot", "UserSettings"]
+__all__ = ["Base", "Note", "Score", "Snapshot", "Subnet", "UserSettings"]

@@ -78,4 +78,4 @@ def reset_settings_cache() -> None:
     _cached = None
 
 
-__all__ = ["Settings", "get_settings", "reset_settings_cache", "NetworkLiteral"]
+__all__ = ["NetworkLiteral", "Settings", "get_settings", "reset_settings_cache"]
