@@ -75,19 +75,80 @@
 
 <section>
   <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-    <h2 class="text-base font-semibold">Subnets ({{ cached | length }})</h2>
+    <h2 class="text-base font-semibold">
+      Subnets
+      {% if filters.is_empty() %}({{ rows | length }})
+      {% else %}({{ rows | length }} of {{ total_cached }})
+      {% endif %}
+    </h2>
     <form action="/refresh" method="post">
       <button class="bg-slate-900 text-white text-sm px-4 py-2 rounded hover:bg-slate-700 active:bg-slate-800"
               type="submit">Refresh All</button>
     </form>
   </div>
-  {% if cached %}
+
+  {% if total_cached %}
+  <form method="get" action="/" class="bg-white border rounded p-3 mb-3 text-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">task type</span>
+        <select name="task_type" class="mt-1 w-full border rounded px-2 py-1.5">
+          <option value="">any</option>
+          {% for t in task_type_options %}
+            <option value="{{ t }}" {% if filters.task_type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">hardware</span>
+        <select name="hardware" class="mt-1 w-full border rounded px-2 py-1.5">
+          <option value="">any</option>
+          {% for h in hardware_options %}
+            <option value="{{ h }}" {% if filters.hardware == h %}selected{% endif %}>{{ h }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">min score</span>
+        <input type="number" step="0.1" min="0" max="10" inputmode="decimal"
+               name="min_score" value="{{ filters.min_score if filters.min_score is not none else '' }}"
+               class="mt-1 w-full border rounded px-2 py-1.5 tabular-nums">
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">max score</span>
+        <input type="number" step="0.1" min="0" max="10" inputmode="decimal"
+               name="max_score" value="{{ filters.max_score if filters.max_score is not none else '' }}"
+               class="mt-1 w-full border rounded px-2 py-1.5 tabular-nums">
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-slate-700">notes</span>
+        <select name="has_notes" class="mt-1 w-full border rounded px-2 py-1.5">
+          {% set hn = filters.has_notes %}
+          <option value="any" {% if hn is none %}selected{% endif %}>any</option>
+          <option value="true" {% if hn is true %}selected{% endif %}>has notes</option>
+          <option value="false" {% if hn is false %}selected{% endif %}>no notes yet</option>
+        </select>
+      </label>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-700 active:bg-slate-800">Apply</button>
+      {% if not filters.is_empty() %}
+        <a href="/" class="px-4 py-2 rounded border hover:bg-slate-50">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+  {% endif %}
+
+  {% if rows %}
   <div class="bg-white rounded border overflow-x-auto" role="region" aria-label="Cached subnets table">
     <table class="w-full text-sm whitespace-nowrap">
       <thead class="bg-slate-100 text-left">
         <tr>
           <th class="p-2 font-semibold">netuid</th>
           <th class="p-2 font-semibold">name</th>
+          <th class="p-2 font-semibold">task</th>
+          <th class="p-2 font-semibold">hardware</th>
+          <th class="p-2 font-semibold">score</th>
           <th class="p-2 font-semibold">emission</th>
           <th class="p-2 font-semibold">burn (TAO)</th>
           <th class="p-2 font-semibold">miners / max</th>
@@ -95,10 +156,14 @@
         </tr>
       </thead>
       <tbody>
-        {% for c in cached %}
+        {% for r in rows %}
+        {% set c = r.cached %}
         <tr class="border-t hover:bg-slate-50">
           <td class="p-2"><a class="text-blue-700 hover:underline font-medium" href="/subnet/{{ c.info.netuid }}">{{ c.info.netuid }}</a></td>
           <td class="p-2">{{ c.info.name or "—" }}</td>
+          <td class="p-2 text-slate-700">{{ r.note.task_type if r.note and r.note.task_type else "—" }}</td>
+          <td class="p-2 text-slate-700">{{ r.note.hardware_required if r.note and r.note.hardware_required else "—" }}</td>
+          <td class="p-2 tabular-nums font-medium">{% if r.latest_score %}{{ "%.2f" | format(r.latest_score.weighted_total) }}{% else %}—{% endif %}</td>
           <td class="p-2 tabular-nums">{% if c.info.emission is not none %}{{ "%.4f" | format(c.info.emission) }}{% else %}—{% endif %}</td>
           <td class="p-2 tabular-nums">{% if c.info.burn_cost_tao is not none %}{{ "%.2f" | format(c.info.burn_cost_tao) }}{% else %}—{% endif %}</td>
           <td class="p-2 tabular-nums">
@@ -117,6 +182,10 @@
     </table>
   </div>
   <p class="mt-2 text-xs text-slate-500 sm:hidden">Tip: scroll the table sideways to see all columns.</p>
+  {% elif total_cached %}
+  <div class="bg-white rounded border p-6 text-center text-sm text-slate-600">
+    No subnets match the current filters. <a href="/" class="text-blue-700 hover:underline">Reset filters</a>.
+  </div>
   {% else %}
   <div class="bg-white rounded border p-6 text-center text-sm text-slate-600">
     Cache is empty. Run <code class="bg-slate-100 px-1 rounded">tao-scout refresh</code> or click <em>Refresh All</em>.

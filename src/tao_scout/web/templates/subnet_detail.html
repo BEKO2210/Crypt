@@ -146,24 +146,33 @@
     </div>
 
     <div class="bg-white border rounded p-4 text-sm">
-      <h3 class="font-semibold mb-2">Score history</h3>
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <h3 class="font-semibold">Score history</h3>
+        {% if scores | length > 0 %}
+        <span class="text-xs text-slate-500">{{ scores | length }} entr{{ "y" if scores | length == 1 else "ies" }}</span>
+        {% endif %}
+      </div>
       {% if scores %}
-      <ul class="space-y-2">
-      {% for s in scores %}
-        <li class="border-b pb-2 last:border-0">
-          <div class="flex flex-wrap justify-between gap-2">
-            <strong class="tabular-nums">{{ "%.2f" | format(s.weighted_total) }}</strong>
-            <span class="text-xs text-slate-600">{{ s.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
-          </div>
-          <div class="text-xs text-slate-600 mt-1 tabular-nums">
-            df={{ s.developer_fit }} hf={{ s.hardware_fit }} cl={{ s.competition_level }}
-            rq={{ s.repo_quality }} rp={{ s.reward_potential }} em={{ s.ecosystem_momentum }}
-          </div>
-        </li>
-      {% endfor %}
-      </ul>
+        {% set spark_values = (scores | map(attribute="weighted_total") | list) | reverse | list %}
+        <div class="mb-3" title="weighted total over time (oldest → latest)">
+          {{ render_sparkline(spark_values, width=240, height=40) | safe }}
+        </div>
+        <ul class="space-y-2">
+        {% for s in scores %}
+          <li class="border-b pb-2 last:border-0">
+            <div class="flex flex-wrap justify-between gap-2">
+              <strong class="tabular-nums">{{ "%.2f" | format(s.weighted_total) }}</strong>
+              <span class="text-xs text-slate-600">{{ s.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+            </div>
+            <div class="text-xs text-slate-600 mt-1 tabular-nums">
+              df={{ s.developer_fit }} hf={{ s.hardware_fit }} cl={{ s.competition_level }}
+              rq={{ s.repo_quality }} rp={{ s.reward_potential }} em={{ s.ecosystem_momentum }}
+            </div>
+          </li>
+        {% endfor %}
+        </ul>
       {% else %}
-      <p class="text-slate-600 text-xs">No scores recorded.</p>
+        <p class="text-slate-600 text-xs">No scores recorded.</p>
       {% endif %}
     </div>
   </aside>

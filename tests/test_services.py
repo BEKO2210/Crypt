@@ -15,6 +15,7 @@ from tao_scout.services import (
     NoteIn,
     ScoreIn,
     SettingsIn,
+    SubnetListFilters,
     append_score,
     build_continue_rail,
     capture_snapshot,
@@ -23,6 +24,7 @@ from tao_scout.services import (
     get_or_create_settings,
     list_missing_stages,
     list_snapshots,
+    list_subnets_with_meta,
     rank,
     update_settings,
     upsert_note,
@@ -173,3 +175,105 @@ async def test_capture_snapshot_round_trips_state(db_session) -> None:
 async def test_capture_snapshot_requires_cache(db_session) -> None:
     with pytest.raises(LookupError):
         await capture_snapshot(db_session, 404)
+
+
+# ---------------------------------------------------------------------------
+# List filters (M4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def _seeded_filter_db(db_session):
+    """Three subnets: text-gen+gpu w/ score 8, image-gen+cpu w/ score 4, infra no note."""
+    for nu, name in [(101, "alpha"), (102, "beta"), (103, "gamma")]:
+        db_session.add(Subnet(netuid=nu, name=name, last_refreshed_at=datetime.now(UTC)))
+    await db_session.commit()
+
+    await upsert_note(db_session, NoteIn(
+        netuid=101, task_type="text-gen", hardware_required="single-gpu-24gb"
+    ))
+    await append_score(db_session, ScoreIn(
+        netuid=101, developer_fit=8, hardware_fit=8, competition_level=8,
+        repo_quality=8, reward_potential=8, ecosystem_momentum=8,
+    ))
+
+    await upsert_note(db_session, NoteIn(
+        netuid=102, task_type="image-gen", hardware_required="cpu-only"
+    ))
+    await append_score(db_session, ScoreIn(
+        netuid=102, developer_fit=4, hardware_fit=4, competition_level=4,
+        repo_quality=4, reward_potential=4, ecosystem_momentum=4,
+    ))
+    return db_session
+
+
+@pytest.mark.asyncio
+async def test_list_subnets_no_filter_returns_all(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(_seeded_filter_db)
+    assert sorted(r.cached.info.netuid for r in rows) == [101, 102, 103]
+
+
+@pytest.mark.asyncio
+async def test_filter_by_task_type(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(task_type="text-gen")
+    )
+    assert [r.cached.info.netuid for r in rows] == [101]
+
+
+@pytest.mark.asyncio
+async def test_filter_by_hardware(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(hardware="cpu-only")
+    )
+    assert [r.cached.info.netuid for r in rows] == [102]
+
+
+@pytest.mark.asyncio
+async def test_filter_by_min_score(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(min_score=6.0)
+    )
+    # Only subnet 101 has weighted_total >= 6.0; 103 has no score → excluded.
+    assert [r.cached.info.netuid for r in rows] == [101]
+
+
+@pytest.mark.asyncio
+async def test_filter_by_max_score(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(max_score=5.0)
+    )
+    # 102 has score 4 (passes), 101 has 8 (excluded), 103 has no score (excluded).
+    assert [r.cached.info.netuid for r in rows] == [102]
+
+
+@pytest.mark.asyncio
+async def test_filter_score_range_and_task(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db,
+        filters=SubnetListFilters(task_type="text-gen", min_score=7.0, max_score=9.0),
+    )
+    assert [r.cached.info.netuid for r in rows] == [101]
+
+
+@pytest.mark.asyncio
+async def test_filter_has_notes_true(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(has_notes=True)
+    )
+    assert sorted(r.cached.info.netuid for r in rows) == [101, 102]
+
+
+@pytest.mark.asyncio
+async def test_filter_has_notes_false(_seeded_filter_db) -> None:
+    rows = await list_subnets_with_meta(
+        _seeded_filter_db, filters=SubnetListFilters(has_notes=False)
+    )
+    assert [r.cached.info.netuid for r in rows] == [103]
+
+
+def test_filters_is_empty_helper() -> None:
+    assert SubnetListFilters().is_empty() is True
+    assert SubnetListFilters(task_type="x").is_empty() is False
+    assert SubnetListFilters(min_score=0.0).is_empty() is False
+    assert SubnetListFilters(has_notes=False).is_empty() is False

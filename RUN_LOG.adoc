@@ -99,3 +99,60 @@ to a clean v1 state.
 *Blocked:* none.
 
 *Next:* M4 list filters, score-history sparklines, README screenshots.
+
+== 2026-05-08 -- Session 3 (M4 closure + UX pass + flatten)
+
+*Goal:* Close every open M4 item: filters, sparklines, README
+screenshots; UX pass over all templates; flatten layout.
+
+*Done:*
+
+* Layout: flattened `tao-scout/` to repo root since this is a
+  single-project repo. 53 git renames preserve blame.
+* UX pass over all 8 templates: focus rings, larger touch targets
+  (buttons px-4 py-2, inputs px-2 py-1.5), bigger range thumbs
+  (22px), text-slate-400 -> text-slate-500/600 for AA contrast,
+  flex-wrap on header/title rows, semantic `<dl>` in chain card,
+  role/aria-* on banners and progress bars, mobile "scroll
+  sideways" hints on overflowing tables, empty states with
+  actionable copy.
+* M4 list filters: `services.SubnetListFilters` +
+  `services.list_subnets_with_meta`; home route reads `task_type`,
+  `hardware`, `min_score`, `max_score`, `has_notes` query params;
+  filter bar above the table preserves state in the URL with an
+  Apply/Reset pair. Eight new service tests cover all five filter
+  axes plus the empty-filter short-circuit.
+* M4 score-history sparklines: `tao_scout.web.sparkline.render_sparkline`
+  produces inline SVG -- no JS, no external library; single-point
+  renders as a circle, multi-point as polyline + soft fill polygon,
+  values clamped to axis range, labelled for screen readers. Wired
+  into the detail page sidebar above the score history list. Eight
+  new tests cover empty/single/multi/clamp/dimensions/aria/safety.
+* M4 README screenshots: `scripts/take_screenshots.py` spins up the
+  app in-process with seeded data on a free port, drives a Playwright
+  Chromium across 5 routes x 2 viewports (desktop 1280x800 + mobile
+  390x844), waits for Tailwind's runtime to apply utility classes
+  before capturing. CDN-cache fallback so the script also works in
+  sandboxed environments without outbound HTTPS from the renderer.
+  10 PNGs (~2.3 MB) committed under `docs/screenshots/`.
+* Docs: README gets a Screenshots section with embedded PNGs and a
+  "regenerate" block. `.gitignore` excludes the screenshot CDN
+  cache and the per-subnet user research workspaces.
+
+*Decisions:*
+
+* Filtering done in Python (not SQL) since the typical subnet count
+  is ~64 and keeping all four filter axes in one place avoids
+  cross-table joins that would have to be repeated for each axis.
+* Sparklines are SVG, not Canvas/JS, to stay aligned with "no
+  client-side build, no extra dependency" and to keep the rendered
+  HTML statically inspectable.
+* Screenshots committed (~2.3 MB total) so the README renders
+  immediately on GitHub; the cache directory and any user-research
+  workspaces stay gitignored.
+
+*Verified:* pytest 106/106 (was 89), ruff clean, every page renders
+200 with seeded data, real screenshots show Tailwind correctly
+applied on both desktop and mobile viewports.
+
+*Blocked:* none. Nothing remaining on the M4 list.

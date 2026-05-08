@@ -44,6 +44,44 @@ In a separate shell, populate the cache:
 .venv/bin/tao-scout list
 ----
 
+== Screenshots
+
+Home page with the "Continue your research" rail and the filterable
+subnets table:
+
+image::docs/screenshots/home-desktop.png[Home page, desktop]
+
+The detail page pairs cached chain metrics with the notes editor, the
+six-axis scoring form, and a server-rendered SVG sparkline of the score
+history:
+
+image::docs/screenshots/subnet-detail-desktop.png[Subnet detail, desktop]
+
+The same pages stack cleanly on a phone:
+
+image::docs/screenshots/home-mobile.png[Home, mobile, 320]
+image::docs/screenshots/subnet-detail-mobile.png[Detail, mobile, 320]
+
+To regenerate:
+
+[source,bash]
+----
+.venv/bin/python -m pip install playwright   # or `uv pip install playwright`
+.venv/bin/playwright install chromium
+.venv/bin/python scripts/take_screenshots.py
+----
+
+If your environment blocks outbound HTTPS from the Chromium sandbox
+(common in CI / dev containers), pre-cache the three CDN scripts first:
+
+[source,bash]
+----
+mkdir -p docs/screenshots/.cache
+curl -sL https://cdn.tailwindcss.com/3.4.17 -o docs/screenshots/.cache/tailwind.js
+curl -sL https://unpkg.com/htmx.org@1.9.12 -o docs/screenshots/.cache/htmx.js
+curl -sL https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js -o docs/screenshots/.cache/alpine.js
+----
+
 == Features
 
 * Read-only async chain client (`AsyncSubtensor`) with timeouts and graceful
