@@ -9,32 +9,48 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; line-height: 1.25; }
     .stale { background: #fee2e2; color: #991b1b; }
     .fresh { background: #dcfce7; color: #14532d; }
     .axis-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
     .axis-bar > div { height: 100%; background: #2563eb; }
+    /* Visible focus ring for keyboard users (mobile + desktop) */
+    :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 4px; }
+    /* Larger thumb on touch devices for the scoring sliders */
+    input[type="range"] { height: 28px; }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #2563eb; cursor: pointer; border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #2563eb; cursor: pointer; border: 2px solid #fff;
+    }
+    /* Sticky table headers when content overflows on long rank lists */
+    .table-sticky thead th { position: sticky; top: 0; z-index: 1; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <header class="border-b bg-white">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-4">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div class="flex items-center gap-3">
         <a href="/" class="font-semibold text-lg">TAO-Scout</a>
         <span class="badge fresh">read-only</span>
       </div>
-      <nav class="flex gap-4 text-sm">
-        <a href="/" class="hover:underline">Home</a>
-        <a href="/rank" class="hover:underline">Rank</a>
-        <a href="/settings" class="hover:underline">Settings</a>
-        <a href="/docs" class="hover:underline" target="_blank">API</a>
+      <nav class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <a href="/" class="hover:underline focus:outline-none">Home</a>
+        <a href="/rank" class="hover:underline focus:outline-none">Rank</a>
+        <a href="/settings" class="hover:underline focus:outline-none">Settings</a>
+        <a href="/docs" class="hover:underline focus:outline-none" target="_blank" rel="noopener">API</a>
       </nav>
     </div>
   </header>
-  <main class="max-w-6xl mx-auto px-4 py-6">
+  <main class="max-w-6xl mx-auto px-4 py-4 sm:py-6">
     {% block content %}{% endblock %}
   </main>
-  <footer class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500">
+  <footer class="max-w-6xl mx-auto px-4 py-6 text-xs sm:text-sm text-slate-600">
     Strictly local. Strictly read-only. Not financial advice. SDK calls audited in CLAUDE.adoc.
   </footer>
 </body>

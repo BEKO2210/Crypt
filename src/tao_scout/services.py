@@ -145,6 +145,82 @@ async def latest_score(session: AsyncSession, netuid: int) -> Score | None:
 
 
 # ---------------------------------------------------------------------------
+# List + filters (M4)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SubnetListRow:
+    """Joined view: cached chain row + current note + latest score."""
+
+    cached: CachedSubnet
+    note: Note | None
+    latest_score: Score | None
+
+
+@dataclass
+class SubnetListFilters:
+    """User-supplied filters for the home subnets table."""
+
+    task_type: str | None = None
+    hardware: str | None = None
+    min_score: float | None = None
+    max_score: float | None = None
+    has_notes: bool | None = None  # None means "no filter"
+
+    def is_empty(self) -> bool:
+        return (
+            self.task_type is None
+            and self.hardware is None
+            and self.min_score is None
+            and self.max_score is None
+            and self.has_notes is None
+        )
+
+
+def _row_passes(row: SubnetListRow, f: SubnetListFilters) -> bool:
+    if f.task_type:
+        if row.note is None or row.note.task_type != f.task_type:
+            return False
+    if f.hardware:
+        if row.note is None or row.note.hardware_required != f.hardware:
+            return False
+    if f.min_score is not None:
+        if row.latest_score is None or row.latest_score.weighted_total < f.min_score:
+            return False
+    if f.max_score is not None:
+        if row.latest_score is None or row.latest_score.weighted_total > f.max_score:
+            return False
+    if f.has_notes is True and row.note is None:
+        return False
+    if f.has_notes is False and row.note is not None:
+        return False
+    return True
+
+
+async def list_subnets_with_meta(
+    session: AsyncSession,
+    *,
+    filters: SubnetListFilters | None = None,
+) -> list[SubnetListRow]:
+    """Cached subnets joined with note + latest score, optionally filtered.
+
+    Filtering happens in Python because the typical subnet count (~64) is
+    small and keeping it in one place avoids cross-table SQL that would need
+    to be duplicated for the four filter axes.
+    """
+    cached_subnets = await get_cached_subnets(session)
+    rows: list[SubnetListRow] = []
+    for c in cached_subnets:
+        note = await get_note(session, c.info.netuid)
+        score = await latest_score(session, c.info.netuid)
+        rows.append(SubnetListRow(cached=c, note=note, latest_score=score))
+    if filters is None or filters.is_empty():
+        return rows
+    return [r for r in rows if _row_passes(r, filters)]
+
+
+# ---------------------------------------------------------------------------
 # Rank
 # ---------------------------------------------------------------------------
 
@@ -526,6 +602,8 @@ __all__ = [
     "ScoreIn",
     "SettingsIn",
     "SnapshotOut",
+    "SubnetListFilters",
+    "SubnetListRow",
     "append_score",
     "build_continue_rail",
     "capture_snapshot",
@@ -538,6 +616,7 @@ __all__ = [
     "list_missing_stages",
     "list_scores",
     "list_snapshots",
+    "list_subnets_with_meta",
     "rank",
     "refresh_all",
     "refresh_one",

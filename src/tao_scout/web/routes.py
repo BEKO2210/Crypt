@@ -14,6 +14,7 @@ from tao_scout.api.deps import db_session
 from tao_scout.config import get_settings
 from tao_scout.scoring.axes import AXES, AXIS_KEYS
 from tao_scout.scoring.weights import DEFAULT_WEIGHTS, InvalidWeightsError, validate_weights
+from tao_scout.web.sparkline import render_sparkline
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -27,7 +28,27 @@ def get_templates() -> Jinja2Templates:  # type: ignore[name-defined]
     templates.env.globals["AXES"] = AXES
     templates.env.globals["AXIS_KEYS"] = AXIS_KEYS
     templates.env.globals["DEFAULT_WEIGHTS"] = DEFAULT_WEIGHTS
+    templates.env.globals["render_sparkline"] = render_sparkline
     return templates
+
+
+_TASK_TYPES: tuple[str, ...] = (
+    "text-gen", "image-gen", "prediction", "signal-processing",
+    "audio", "multimodal", "infra", "data", "other",
+)
+_HARDWARE: tuple[str, ...] = (
+    "cpu-only", "single-gpu-8gb", "single-gpu-24gb", "multi-gpu", "cluster", "unknown",
+)
+
+
+def _parse_has_notes(v: str | None) -> bool | None:
+    if v in (None, "", "any"):
+        return None
+    if v == "true":
+        return True
+    if v == "false":
+        return False
+    return None
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -35,22 +56,36 @@ async def home(
     request: Request,
     msg: str | None = None,
     kind: str | None = None,
+    task_type: str | None = None,
+    hardware: str | None = None,
+    min_score: float | None = None,
+    max_score: float | None = None,
+    has_notes: str | None = None,
     session: AsyncSession = Depends(db_session),
 ) -> HTMLResponse:
-    cached = await services.get_cached_subnets(session)
+    filters = services.SubnetListFilters(
+        task_type=task_type or None,
+        hardware=hardware or None,
+        min_score=min_score,
+        max_score=max_score,
+        has_notes=_parse_has_notes(has_notes),
+    )
+    rows = await services.list_subnets_with_meta(session, filters=filters)
+    total_cached = len(await services.get_cached_subnets(session))
     rail = await services.build_continue_rail(
         session,
         workspace_root=services.workspace_root_default(),
     )
     user = await services.get_or_create_settings(session)
-    any_stale = any(c.is_stale for c in cached)
+    any_stale = any(r.cached.is_stale for r in rows)
     settings = get_settings()
     templates = get_templates()
     return templates.TemplateResponse(
         request,
         "subnet_list.html",
         {
-            "cached": cached,
+            "rows": rows,
+            "total_cached": total_cached,
             "rail": rail,
             "user": user,
             "any_stale": any_stale,
@@ -58,6 +93,9 @@ async def home(
             "now": datetime.now(UTC),
             "flash_msg": msg,
             "flash_kind": kind if kind in {"ok", "error"} else None,
+            "filters": filters,
+            "task_type_options": _TASK_TYPES,
+            "hardware_options": _HARDWARE,
         },
     )
 

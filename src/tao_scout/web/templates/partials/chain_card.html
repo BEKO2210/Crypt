@@ -1,6 +1,6 @@
-<div class="flex items-start justify-between gap-3">
-  <div class="text-sm space-y-1">
-    <div class="flex items-center gap-2">
+<div class="flex flex-wrap items-start justify-between gap-3">
+  <div class="text-sm space-y-1 min-w-0 flex-1">
+    <div class="flex flex-wrap items-center gap-2">
       <span class="badge {% if cached.is_stale %}stale{% else %}fresh{% endif %}">
         cached {{ cached.cached_at.strftime("%Y-%m-%d %H:%M") }}
       </span>
@@ -8,20 +8,28 @@
         <span class="badge stale">refresh failed: {{ report.error }}</span>
       {% endif %}
     </div>
-    <div class="grid grid-cols-2 gap-x-6 gap-y-1 mt-2">
-      <span>emission</span><span>{% if cached.info.emission is not none %}{{ "%.6f" | format(cached.info.emission) }}{% else %}—{% endif %}</span>
-      <span>tempo</span><span>{{ cached.info.tempo or "—" }}</span>
-      <span>burn (TAO)</span><span>{% if cached.info.burn_cost_tao is not none %}{{ "%.4f" | format(cached.info.burn_cost_tao) }}{% else %}—{% endif %}</span>
-      <span>recycle</span><span>{% if cached.info.recycle is not none %}{{ "%.4f" | format(cached.info.recycle) }}{% else %}—{% endif %}</span>
-      <span>validators</span><span>{{ cached.info.n_validators if cached.info.n_validators is not none else "—" }}</span>
-      <span>miners</span><span>{{ cached.info.n_miners if cached.info.n_miners is not none else "—" }}</span>
-      <span>max_n</span><span>{{ cached.info.max_n if cached.info.max_n is not none else "—" }}</span>
-      <span>owner</span><span class="font-mono text-xs">{{ cached.info.owner_hotkey or "—" }}</span>
-    </div>
+    <dl class="grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto_1fr] gap-x-4 sm:gap-x-6 gap-y-1 mt-3">
+      <dt class="text-slate-600">emission</dt>
+      <dd class="tabular-nums">{% if cached.info.emission is not none %}{{ "%.6f" | format(cached.info.emission) }}{% else %}—{% endif %}</dd>
+      <dt class="text-slate-600">tempo</dt>
+      <dd class="tabular-nums">{{ cached.info.tempo or "—" }}</dd>
+      <dt class="text-slate-600">burn (TAO)</dt>
+      <dd class="tabular-nums">{% if cached.info.burn_cost_tao is not none %}{{ "%.4f" | format(cached.info.burn_cost_tao) }}{% else %}—{% endif %}</dd>
+      <dt class="text-slate-600">recycle</dt>
+      <dd class="tabular-nums">{% if cached.info.recycle is not none %}{{ "%.4f" | format(cached.info.recycle) }}{% else %}—{% endif %}</dd>
+      <dt class="text-slate-600">validators</dt>
+      <dd class="tabular-nums">{{ cached.info.n_validators if cached.info.n_validators is not none else "—" }}</dd>
+      <dt class="text-slate-600">miners</dt>
+      <dd class="tabular-nums">{{ cached.info.n_miners if cached.info.n_miners is not none else "—" }}</dd>
+      <dt class="text-slate-600">max_n</dt>
+      <dd class="tabular-nums">{{ cached.info.max_n if cached.info.max_n is not none else "—" }}</dd>
+      <dt class="text-slate-600">owner</dt>
+      <dd class="font-mono text-xs break-all">{{ cached.info.owner_hotkey or "—" }}</dd>
+    </dl>
   </div>
   <form hx-post="/subnet/{{ cached.info.netuid }}/refresh"
         hx-target="#chain-card"
         hx-swap="innerHTML">
-    <button class="text-xs bg-slate-900 text-white px-2 py-1 rounded">Refresh</button>
+    <button class="text-sm bg-slate-900 text-white px-3 py-1.5 rounded hover:bg-slate-700 active:bg-slate-800">Refresh</button>
   </form>
 </div>

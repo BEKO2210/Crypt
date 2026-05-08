@@ -1,44 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Rank · TAO-Scout{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-xl font-semibold">Top 20 by {{ by }}</h1>
-  <div class="flex gap-2 text-sm">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h1 class="text-xl sm:text-2xl font-semibold">Top 20 by {{ by }}</h1>
+  <div role="tablist" aria-label="Sort order" class="flex flex-wrap gap-2 text-sm">
     {% for o in ["total","reward","fit"] %}
-      <a class="px-2 py-1 rounded {% if by == o %}bg-slate-900 text-white{% else %}bg-white border{% endif %}"
+      <a role="tab" aria-selected="{{ 'true' if by == o else 'false' }}"
+         class="px-3 py-1.5 rounded {% if by == o %}bg-slate-900 text-white{% else %}bg-white border hover:bg-slate-50{% endif %}"
          href="/rank?by={{ o }}">{{ o }}</a>
     {% endfor %}
   </div>
 </div>
-<div class="bg-white rounded border overflow-x-auto">
-  <table class="w-full text-sm">
+
+{% if rows %}
+<div class="bg-white rounded border overflow-x-auto" role="region" aria-label="Subnet ranking table">
+  <table class="w-full text-sm whitespace-nowrap">
     <thead class="bg-slate-100 text-left">
       <tr>
-        <th class="p-2">#</th>
-        <th class="p-2">netuid</th>
-        <th class="p-2">name</th>
-        <th class="p-2">total</th>
-        <th class="p-2">df</th><th class="p-2">hf</th><th class="p-2">cl</th>
-        <th class="p-2">rq</th><th class="p-2">rp</th><th class="p-2">em</th>
-        <th class="p-2">scored</th>
+        <th class="p-2 font-semibold">#</th>
+        <th class="p-2 font-semibold">netuid</th>
+        <th class="p-2 font-semibold">name</th>
+        <th class="p-2 font-semibold">total</th>
+        <th class="p-2 font-semibold" title="developer fit">df</th>
+        <th class="p-2 font-semibold" title="hardware fit">hf</th>
+        <th class="p-2 font-semibold" title="competition level (inverted)">cl</th>
+        <th class="p-2 font-semibold" title="repo quality">rq</th>
+        <th class="p-2 font-semibold" title="reward potential">rp</th>
+        <th class="p-2 font-semibold" title="ecosystem momentum">em</th>
+        <th class="p-2 font-semibold">scored</th>
       </tr>
     </thead>
     <tbody>
       {% for r in rows %}
-      <tr class="border-t">
-        <td class="p-2">{{ loop.index }}</td>
-        <td class="p-2"><a class="text-blue-700 hover:underline" href="/subnet/{{ r.subnet.netuid }}">{{ r.subnet.netuid }}</a></td>
+      <tr class="border-t hover:bg-slate-50">
+        <td class="p-2 tabular-nums text-slate-500">{{ loop.index }}</td>
+        <td class="p-2"><a class="text-blue-700 hover:underline font-medium" href="/subnet/{{ r.subnet.netuid }}">{{ r.subnet.netuid }}</a></td>
         <td class="p-2">{{ r.subnet.name or "—" }}</td>
-        <td class="p-2 font-semibold">
+        <td class="p-2 font-semibold tabular-nums">
           {% if r.score %}{{ "%.2f" | format(r.score.weighted_total) }}{% else %}—{% endif %}
         </td>
-        <td class="p-2">{{ r.score.developer_fit if r.score else "—" }}</td>
-        <td class="p-2">{{ r.score.hardware_fit if r.score else "—" }}</td>
-        <td class="p-2">{{ r.score.competition_level if r.score else "—" }}</td>
-        <td class="p-2">{{ r.score.repo_quality if r.score else "—" }}</td>
-        <td class="p-2">{{ r.score.reward_potential if r.score else "—" }}</td>
-        <td class="p-2">{{ r.score.ecosystem_momentum if r.score else "—" }}</td>
-        <td class="p-2 text-xs text-slate-500">
+        <td class="p-2 tabular-nums">{{ r.score.developer_fit if r.score else "—" }}</td>
+        <td class="p-2 tabular-nums">{{ r.score.hardware_fit if r.score else "—" }}</td>
+        <td class="p-2 tabular-nums">{{ r.score.competition_level if r.score else "—" }}</td>
+        <td class="p-2 tabular-nums">{{ r.score.repo_quality if r.score else "—" }}</td>
+        <td class="p-2 tabular-nums">{{ r.score.reward_potential if r.score else "—" }}</td>
+        <td class="p-2 tabular-nums">{{ r.score.ecosystem_momentum if r.score else "—" }}</td>
+        <td class="p-2 text-xs text-slate-600">
           {% if r.score %}{{ r.score.created_at.strftime("%Y-%m-%d") }}{% else %}—{% endif %}
         </td>
       </tr>
@@ -46,4 +53,10 @@
     </tbody>
   </table>
 </div>
+<p class="mt-2 text-xs text-slate-500 sm:hidden">Tip: scroll the table sideways to see all axes.</p>
+{% else %}
+<div class="bg-white rounded border p-6 text-center text-sm text-slate-600">
+  Nothing to rank yet. Score a subnet from its detail page first.
+</div>
+{% endif %}
 {% endblock %}
