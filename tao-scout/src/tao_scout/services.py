@@ -6,11 +6,11 @@ this module directly.
 
 from __future__ import annotations
 
-import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,11 +23,9 @@ from tao_scout.chain.cache import (
     refresh_all,
     refresh_one,
 )
-from tao_scout.config import get_settings
 from tao_scout.db.models import Note, Score, Snapshot, Subnet, UserSettings
 from tao_scout.scoring.engine import ScoreInput, build_rationale_skeleton, compute_weighted_total
 from tao_scout.scoring.weights import DEFAULT_WEIGHTS, validate_weights
-
 
 # ---------------------------------------------------------------------------
 # Notes
@@ -91,8 +89,13 @@ class ScoreIn:
 
 
 async def append_score(session: AsyncSession, payload: ScoreIn) -> Score:
-    settings_row = await get_or_create_settings(session)
-    weights = payload.weights or settings_row.weights
+    if payload.weights is not None:
+        weights: Mapping[str, float] = payload.weights
+    else:
+        # Read user settings if they exist; fall back to defaults without
+        # creating a settings row as a side-effect of scoring.
+        existing = await session.get(UserSettings, 1)
+        weights = existing.weights if existing is not None else DEFAULT_WEIGHTS
     norm_weights = validate_weights(weights)
 
     score_input = ScoreInput(
@@ -431,21 +434,101 @@ def _stage_blueprint(stage: str) -> tuple[list[str], list[str], list[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Snapshots (M3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SnapshotOut:
+    id: int
+    netuid: int
+    captured_at: datetime
+    payload: dict[str, Any]
+
+
+def _snapshot_payload(cached: CachedSubnet, note: Note | None, score: Score | None) -> dict[str, Any]:
+    return {
+        "captured_at": datetime.now(UTC).isoformat(),
+        "is_stale": cached.is_stale,
+        "subnet": cached.info.model_dump(mode="json"),
+        "note": (
+            {
+                "task_type": note.task_type,
+                "repo_url": note.repo_url,
+                "repo_quality_notes": note.repo_quality_notes,
+                "hardware_required": note.hardware_required,
+                "entry_difficulty": note.entry_difficulty,
+                "risk_notes": note.risk_notes,
+                "opportunity_notes": note.opportunity_notes,
+                "tags": list(note.tags or []),
+                "last_reviewed_at": note.last_reviewed_at.isoformat() if note.last_reviewed_at else None,
+            }
+            if note is not None
+            else None
+        ),
+        "latest_score": (
+            {
+                "developer_fit": score.developer_fit,
+                "hardware_fit": score.hardware_fit,
+                "competition_level": score.competition_level,
+                "repo_quality": score.repo_quality,
+                "reward_potential": score.reward_potential,
+                "ecosystem_momentum": score.ecosystem_momentum,
+                "weighted_total": score.weighted_total,
+                "weights_snapshot": dict(score.weights_snapshot or {}),
+                "rationale": score.rationale,
+                "created_at": score.created_at.isoformat() if score.created_at else None,
+            }
+            if score is not None
+            else None
+        ),
+    }
+
+
+async def capture_snapshot(session: AsyncSession, netuid: int) -> Snapshot:
+    """Append a Snapshot row capturing the current cached + note + latest score state.
+
+    Raises ``LookupError`` if the subnet is not in the cache; nothing is written
+    in that case so the caller can surface a clear "refresh first" message.
+    """
+    cached = await get_cached_subnet(session, netuid)
+    if cached is None:
+        raise LookupError(f"subnet {netuid} not in cache; refresh first")
+    note = await get_note(session, netuid)
+    score = await latest_score(session, netuid)
+    payload = _snapshot_payload(cached, note, score)
+    snap = Snapshot(netuid=netuid, payload_json=payload)
+    session.add(snap)
+    await session.commit()
+    await session.refresh(snap)
+    return snap
+
+
+async def list_snapshots(session: AsyncSession, netuid: int) -> list[Snapshot]:
+    res = await session.execute(
+        select(Snapshot).where(Snapshot.netuid == netuid).order_by(desc(Snapshot.captured_at))
+    )
+    return list(res.scalars().all())
+
+
+# ---------------------------------------------------------------------------
 # Re-exported chain helpers
 # ---------------------------------------------------------------------------
 
 
 __all__ = [
+    "ICM_STAGES",
     "CachedSubnet",
     "ContinueRail",
-    "ICM_STAGES",
     "NoteIn",
     "RankRow",
     "RefreshReport",
     "ScoreIn",
     "SettingsIn",
+    "SnapshotOut",
     "append_score",
     "build_continue_rail",
+    "capture_snapshot",
     "ensure_workspace",
     "get_cached_subnet",
     "get_cached_subnets",
@@ -454,6 +537,7 @@ __all__ = [
     "latest_score",
     "list_missing_stages",
     "list_scores",
+    "list_snapshots",
     "rank",
     "refresh_all",
     "refresh_one",

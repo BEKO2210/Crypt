@@ -40,4 +40,4 @@ class ChainStatus(BaseModel):
     error: str | None = None
 
 
-__all__ = ["SubnetInfo", "ChainStatus"]
+__all__ = ["ChainStatus", "SubnetInfo"]

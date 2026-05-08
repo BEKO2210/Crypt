@@ -21,28 +21,44 @@ FORBIDDEN_SDK_METHODS: frozenset[str] = frozenset(
     {
         # Stake / balance state changes
         "add_stake",
+        "add_stake_multiple",
         "remove_stake",
+        "remove_stake_multiple",
         "transfer",
         "transfer_stake",
         "swap_stake",
         "move_stake",
+        "unstake_all",
         # Registration
         "register",
         "burned_register",
         "root_register",
+        "pow_register",
         "swap_hotkey",
         # Validator weights
         "set_weights",
+        "set_root_weights",
         "commit_weights",
+        "commit_reveal_weights",
         "reveal_weights",
+        "root_set_weights",
         # Serving
         "serve_axon",
         "serve_prometheus",
+        # Subnet ownership / parameters
+        "register_subnet",
+        "sudo_set",
+        "set_subnet_identity",
+        "set_identity",
         # Generic write/sign primitives
         "commit",
         "reveal",
         "sign",
         "sign_message",
+        "submit_extrinsic",
+        "send_extrinsic",
+        "do_transfer",
+        "compose_call",
         # Wallet / key handling
         "unlock_coldkey",
         "unlock_hotkey",
@@ -168,6 +184,6 @@ __all__ = [
     "WALLET_FORBIDDEN_IMPORTS",
     "ReadOnlyViolationError",
     "assert_read_only_call",
-    "warn_if_wallet_env_present",
     "find_forbidden_wallet_imports",
+    "warn_if_wallet_env_present",
 ]

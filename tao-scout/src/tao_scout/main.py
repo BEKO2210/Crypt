@@ -52,7 +52,10 @@ def _self_audit() -> None:
             note="TAO-Scout never reads wallets, but these env vars are set.",
         )
 
-    src_root = Path(__file__).parent
+    # Prefer scanning the whole src/ tree (one level above the package),
+    # falling back to the package directory if the layout is non-standard.
+    package_dir = Path(__file__).parent
+    src_root = package_dir.parent if package_dir.parent.name == "src" else package_dir
     findings = find_forbidden_wallet_imports(src_root)
     if findings:  # pragma: no cover - prevented by tests
         raise RuntimeError(

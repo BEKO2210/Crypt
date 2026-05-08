@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Iterable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ class CachedSubnet:
     is_stale: bool
 
 
-def _row_to_info(row: Subnet) -> SubnetInfo:  # noqa: C901
+def _row_to_info(row: Subnet) -> SubnetInfo:
     fetched = _aware(row.last_refreshed_at) or datetime.now(UTC)
     raw: dict | None = None
     if row.raw_json:

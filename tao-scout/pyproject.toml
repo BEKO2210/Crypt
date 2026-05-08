@@ -51,6 +51,16 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# FastAPI/Typer require call-in-default for Depends/Option.
+"src/tao_scout/api/*" = ["B008"]
+"src/tao_scout/web/routes.py" = ["B008", "F821"]
+"src/tao_scout/cli/main.py" = ["B008"]
+# SDK class is named AsyncSubtensor; matching it is correct.
+"src/tao_scout/chain/client.py" = ["N806"]
+# Pydantic ValidationError test is intentionally broad here.
+"tests/test_scoring.py" = ["B017"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = false

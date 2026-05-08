@@ -7,11 +7,12 @@ behavioural difference, that is a bug.
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -25,8 +26,7 @@ note_app = typer.Typer(help="Note operations.")
 app.add_typer(note_app, name="note")
 
 
-def _interactive_note(existing) -> services.NoteIn:
-    netuid = existing.netuid if existing else int(typer.prompt("netuid", type=int))
+def _interactive_note(netuid: int, existing) -> services.NoteIn:
     task_type = typer.prompt(
         "task type",
         default=(existing.task_type if existing else "") or "",
@@ -79,8 +79,7 @@ def note_add(netuid: int) -> None:
     async def _impl() -> None:
         async with get_session_factory()() as s:
             existing = await services.get_note(s, netuid)
-            payload = _interactive_note(existing)
-            payload.netuid = netuid
+            payload = _interactive_note(netuid, existing)
             note = await services.upsert_note(s, payload)
             typer.echo(f"saved note id={note.id}")
         await reset_engine()
@@ -189,7 +188,7 @@ def show_cmd(netuid: int) -> None:
 
 @app.command("refresh")
 def refresh_cmd(
-    netuid: Optional[int] = typer.Option(None, "--netuid", "-n"),
+    netuid: int | None = typer.Option(None, "--netuid", "-n"),
     all_: bool = typer.Option(False, "--all", help="Refresh every subnet"),
 ) -> None:
     """Pull subnet info from chain into the cache."""
@@ -221,7 +220,7 @@ def refresh_cmd(
 
 @app.command("score")
 def score_cmd(netuid: int) -> None:
-    """Interactive scoring (six 0–10 inputs, then optional rationale)."""
+    """Interactive scoring (six 0-10 inputs, then optional rationale)."""
 
     async def _impl() -> None:
         async with get_session_factory()() as s:
@@ -290,10 +289,12 @@ def rank_cmd(
 @app.command("export")
 def export_cmd(
     fmt: str = typer.Option("json", "--format", help="json | csv"),
-    out: Optional[Path] = typer.Option(None, "--out"),
+    out: Path | None = typer.Option(None, "--out"),
 ) -> None:
     """Dump notes + scores to ./data/exports/."""
-    from tao_scout.api.routes_export import export as export_route_handler  # noqa: F401
+    if fmt not in {"json", "csv"}:
+        typer.echo(f"unknown format: {fmt!r} (expected: json | csv)")
+        raise typer.Exit(2)
 
     async def _impl() -> None:
         from sqlalchemy import select
@@ -318,7 +319,42 @@ def export_cmd(
             target.write_text(json.dumps(body, indent=2), encoding="utf-8")
             typer.echo(f"wrote {target}")
         else:
-            typer.echo("use the web /api/export?format=csv endpoint for CSV exports")
+            buf = io.StringIO()
+            buf.write("# notes\n")
+            note_writer = csv.DictWriter(
+                buf,
+                fieldnames=[
+                    "netuid", "task_type", "repo_url", "repo_quality_notes",
+                    "hardware_required", "entry_difficulty", "risk_notes",
+                    "opportunity_notes", "tags", "last_reviewed_at",
+                ],
+            )
+            note_writer.writeheader()
+            for n in notes:
+                d = _serialize_note(n)
+                d["tags"] = ";".join(d["tags"])
+                note_writer.writerow(d)
+            buf.write("\n# scores\n")
+            score_writer = csv.DictWriter(
+                buf,
+                fieldnames=[
+                    "netuid", "created_at", "developer_fit", "hardware_fit",
+                    "competition_level", "repo_quality", "reward_potential",
+                    "ecosystem_momentum", "weighted_total", "weights_snapshot",
+                    "rationale",
+                ],
+            )
+            score_writer.writeheader()
+            for sc in scores:
+                d = _serialize_score(sc)
+                d["weights_snapshot"] = json.dumps(d["weights_snapshot"])
+                score_writer.writerow(d)
+            target = out or Path(
+                f"./data/exports/tao-scout-{datetime.now(UTC):%Y%m%d-%H%M%S}.csv"
+            )
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(buf.getvalue(), encoding="utf-8")
+            typer.echo(f"wrote {target}")
         await reset_engine()
 
     _run(_impl())
@@ -377,6 +413,64 @@ def import_cmd(file: Path) -> None:
     _run(_impl())
 
 
+# --------------------------------------------------------------------------- snapshot
+
+
+@app.command("snapshot")
+def snapshot_cmd(
+    netuid: int | None = typer.Option(None, "--netuid", "-n"),
+    all_: bool = typer.Option(False, "--all", help="Snapshot every cached subnet"),
+    list_: bool = typer.Option(False, "--list", help="List existing snapshots for --netuid"),
+) -> None:
+    """Capture a Snapshot row for diffing chain+notes+score over time."""
+
+    async def _impl() -> None:
+        async with get_session_factory()() as s:
+            if list_:
+                if netuid is None:
+                    typer.echo("--list requires --netuid")
+                    raise typer.Exit(2)
+                rows = await services.list_snapshots(s, netuid)
+                if not rows:
+                    typer.echo("(no snapshots)")
+                    return
+                for r in rows:
+                    typer.echo(
+                        f"id={r.id}  netuid={r.netuid}  "
+                        f"captured_at={r.captured_at.strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
+                return
+
+            if all_:
+                cached = await services.get_cached_subnets(s)
+                if not cached:
+                    typer.echo("cache empty; run `tao-scout refresh --all` first")
+                    raise typer.Exit(1)
+                count = 0
+                for c in cached:
+                    snap = await services.capture_snapshot(s, c.info.netuid)
+                    typer.echo(f"snapshot id={snap.id} netuid={snap.netuid}")
+                    count += 1
+                typer.echo(f"captured {count} snapshot(s)")
+                return
+
+            if netuid is None:
+                typer.echo("provide --netuid N or --all")
+                raise typer.Exit(2)
+            try:
+                snap = await services.capture_snapshot(s, netuid)
+            except LookupError as e:
+                typer.echo(str(e))
+                raise typer.Exit(1) from e
+            typer.echo(
+                f"snapshot id={snap.id} netuid={snap.netuid} "
+                f"captured_at={snap.captured_at.isoformat()}"
+            )
+        await reset_engine()
+
+    _run(_impl())
+
+
 # --------------------------------------------------------------------------- serve
 
 
@@ -418,7 +512,7 @@ def doctor_cmd() -> None:
                 await services.get_cached_subnets(s)
             typer.echo(f"[OK] db reachable at {settings.db_path}")
         except Exception as e:
-            typer.echo(f"[FAIL] db: {e!r}")
+            typer.echo(f"[FAIL] db: {e!r} (try `alembic upgrade head`)")
             ok = False
 
         # 3) bittensor SDK importable

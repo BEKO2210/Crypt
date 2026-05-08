@@ -46,3 +46,56 @@ workspace scaffold per user clarification.
 
 *Next:* M3 `tao-scout snapshot` command, M4 list filters, sparklines,
 README screenshots.
+
+== 2026-05-08 -- Session 2 (audit + polish)
+
+*Goal:* Audit the M0-M3 implementation against `CLAUDE.adoc` and bring it
+to a clean v1 state.
+
+*Done:*
+
+* Audit pass over the full repo. Read-only invariants verified
+  end-to-end (deny-list, allow-list, AST wallet-import scan, frozen
+  `Settings.read_only`).
+* Safety: extended `FORBIDDEN_SDK_METHODS` with `set_root_weights`,
+  `commit_reveal_weights`, `pow_register`, `submit_extrinsic`,
+  `compose_call`, `add_stake_multiple`, `remove_stake_multiple`,
+  `unstake_all`, `register_subnet`, `sudo_set`, `set_subnet_identity`,
+  and a few sign/transfer aliases.
+* Self-audit: `_self_audit` now scans the whole `src/` tree (one level
+  above the package) instead of only the package directory.
+* Tests: added `test_settings_explicit_false_kwarg_is_rejected`,
+  `test_settings_frozen_blocks_reassignment`, and
+  `test_deny_list_covers_known_dangerous_methods`. Added snapshot
+  service tests and an `append_score`-no-side-effect regression test.
+* M3 closure: `tao-scout snapshot` command + `services.capture_snapshot`
+  + `services.list_snapshots`. Supports single, `--all`, and `--list`.
+* Service-layer correctness: `append_score` no longer creates a
+  `UserSettings` row as a write side-effect of scoring — it reads the
+  existing row if present, otherwise falls back to `DEFAULT_WEIGHTS`.
+* Web UI: `submit_note` now requires the subnet to be in the cache
+  (symmetric with the API). `/refresh` now redirects to home with a
+  query-string flash (`msg=...&kind=ok|error`) so RPC failures surface
+  visibly.
+* CLI polish: `tao-scout export --format csv` now writes CSV to disk
+  (was previously web-only). `Optional[X]` replaced by `X | None`.
+  Removed dead `typer.prompt("netuid")` branch in interactive note
+  flow. Doctor message hints `alembic upgrade head` on DB failure.
+* Tooling: per-file ruff ignores for FastAPI/Typer `Depends`/`Option`
+  defaults, `Jinja2Templates` forward-ref, `AsyncSubtensor` casing.
+* End-to-end verification: `pytest` 89/89 green, `ruff check` clean,
+  `tao-scout doctor` reaches a live finney RPC (block returned) and
+  reports all six checks OK.
+
+*Decisions:*
+
+* Did not add list filters, sparklines, or README screenshots — those
+  remain on the M4 roadmap.
+* CSV export is now symmetric across CLI and web; CSV import is still
+  out of scope (JSON only) per spec.
+* Refresh feedback uses redirect-with-query-string rather than
+  cookies/sessions to keep the app stateless.
+
+*Blocked:* none.
+
+*Next:* M4 list filters, score-history sparklines, README screenshots.

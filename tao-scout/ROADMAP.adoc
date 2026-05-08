@@ -27,9 +27,10 @@
 == M3 -- Rank, export, snapshots
 
 * [x] `/rank` page + `tao-scout rank`
-* [x] Export / import (JSON; CSV via web)
-* [ ] `tao-scout snapshot` command (records `payload_json` to the
-  `snapshots` table for diffing over time)
+* [x] Export / import (JSON; CSV via CLI and web)
+* [x] `tao-scout snapshot` command (records `payload_json` to the
+  `snapshots` table for diffing over time; `--all`, `--list -n N`, and
+  single-netuid modes)
 
 == M4 -- Polish
 

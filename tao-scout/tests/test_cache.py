@@ -71,7 +71,7 @@ async def test_refresh_all_falls_back_to_cache_on_error(db_session) -> None:
 @pytest.mark.asyncio
 async def test_stale_flag_set_when_older_than_ttl(db_session, monkeypatch) -> None:
     # Force a small TTL by overriding settings.
-    from tao_scout.config import Settings, get_settings, reset_settings_cache
+    from tao_scout.config import get_settings, reset_settings_cache
 
     monkeypatch.setenv("TAO_SCOUT_CACHE_TTL_SECONDS", "1")
     reset_settings_cache()

@@ -6,8 +6,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
-from tao_scout.db.models import Subnet
+from tao_scout.db.models import Subnet, UserSettings
 from tao_scout.scoring.weights import DEFAULT_WEIGHTS
 from tao_scout.services import (
     ICM_STAGES,
@@ -16,10 +17,12 @@ from tao_scout.services import (
     SettingsIn,
     append_score,
     build_continue_rail,
+    capture_snapshot,
     ensure_workspace,
     get_note,
     get_or_create_settings,
     list_missing_stages,
+    list_snapshots,
     rank,
     update_settings,
     upsert_note,
@@ -114,3 +117,59 @@ def test_ensure_workspace_creates_stages(tmp_path: Path) -> None:
         body = ctx.read_text(encoding="utf-8")
         assert "= " in body  # AsciiDoc title
     assert list_missing_stages(tmp_path, 17) == []
+
+
+@pytest.mark.asyncio
+async def test_append_score_does_not_create_settings_row(db_session) -> None:
+    """Scoring must not have settings-creation as a write side-effect."""
+    db_session.add(Subnet(netuid=55, last_refreshed_at=datetime.now(UTC)))
+    await db_session.commit()
+    await append_score(
+        db_session,
+        ScoreIn(
+            netuid=55,
+            developer_fit=5, hardware_fit=5, competition_level=5,
+            repo_quality=5, reward_potential=5, ecosystem_momentum=5,
+        ),
+    )
+    rows = (await db_session.execute(select(UserSettings))).scalars().all()
+    assert list(rows) == []
+
+
+@pytest.mark.asyncio
+async def test_capture_snapshot_round_trips_state(db_session) -> None:
+    db_session.add(
+        Subnet(
+            netuid=12,
+            name="snap-target",
+            emission=0.05,
+            last_refreshed_at=datetime.now(UTC),
+        )
+    )
+    await db_session.commit()
+    await upsert_note(db_session, NoteIn(netuid=12, task_type="text-gen", tags=["llm"]))
+    await append_score(
+        db_session,
+        ScoreIn(
+            netuid=12,
+            developer_fit=7, hardware_fit=6, competition_level=4,
+            repo_quality=8, reward_potential=5, ecosystem_momentum=6,
+        ),
+    )
+    snap = await capture_snapshot(db_session, 12)
+    assert snap.id is not None
+    assert snap.netuid == 12
+    payload = snap.payload_json
+    assert payload["subnet"]["netuid"] == 12
+    assert payload["subnet"]["name"] == "snap-target"
+    assert payload["note"]["task_type"] == "text-gen"
+    assert payload["latest_score"]["developer_fit"] == 7
+
+    rows = await list_snapshots(db_session, 12)
+    assert len(rows) == 1
+
+
+@pytest.mark.asyncio
+async def test_capture_snapshot_requires_cache(db_session) -> None:
+    with pytest.raises(LookupError):
+        await capture_snapshot(db_session, 404)

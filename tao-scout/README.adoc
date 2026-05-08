@@ -59,7 +59,10 @@ tao-scout list
   `data/workspaces/netuid-NNN/` with five staged folders, each containing a
   `CONTEXT.adoc` declaring its Inputs, Process, and Outputs.
 * Symmetrical CLI (`tao-scout`) and HTTP API; both share one service layer.
-* Export / import as JSON or CSV. Round-trip is lossless for JSON.
+* Export / import as JSON or CSV (CLI + web). Round-trip is lossless for
+  JSON.
+* `tao-scout snapshot` records the cached chain row + current note + latest
+  score into the `snapshots` table for later diffing.
 
 == Architecture
 

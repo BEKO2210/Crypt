@@ -6,8 +6,8 @@ from tao_scout.scoring.weights import DEFAULT_WEIGHTS, validate_weights
 
 __all__ = [
     "AXES",
-    "AxisDefinition",
     "DEFAULT_WEIGHTS",
+    "AxisDefinition",
     "ScoreInput",
     "compute_weighted_total",
     "validate_weights",

@@ -5,7 +5,6 @@ They MUST pass before any other test runs.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -139,3 +138,36 @@ def test_settings_default_is_read_only() -> None:
 
     s = Settings()
     assert s.read_only is True
+
+
+def test_settings_explicit_false_kwarg_is_rejected() -> None:
+    """Passing read_only=False to the model directly must also fail."""
+    from pydantic import ValidationError
+
+    from tao_scout.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(read_only=False)
+
+
+def test_settings_frozen_blocks_reassignment() -> None:
+    """Once constructed, settings.read_only cannot be flipped."""
+    from pydantic import ValidationError
+
+    from tao_scout.config import Settings
+
+    s = Settings()
+    with pytest.raises(ValidationError):
+        s.read_only = False  # type: ignore[misc]
+
+
+def test_deny_list_covers_known_dangerous_methods() -> None:
+    """Belt-and-suspenders: a few names we always expect to be denied."""
+    must_deny = {
+        "set_weights", "set_root_weights", "commit_weights",
+        "commit_reveal_weights", "register", "burned_register",
+        "pow_register", "transfer", "transfer_stake",
+        "add_stake", "remove_stake", "swap_hotkey",
+        "submit_extrinsic", "compose_call",
+    }
+    assert must_deny.issubset(FORBIDDEN_SDK_METHODS)
