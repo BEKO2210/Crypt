@@ -46,21 +46,47 @@ In a separate shell, populate the cache:
 
 == Screenshots
 
-Home page with the "Continue your research" rail and the filterable
-subnets table:
+=== Desktop (1280 × 800)
 
-image::docs/screenshots/home-desktop.png[Home page, desktop]
+Home page -- "Continue your research" rail, filter bar, cached subnets:
 
-The detail page pairs cached chain metrics with the notes editor, the
-six-axis scoring form, and a server-rendered SVG sparkline of the score
-history:
+++++
+<p align="center">
+  <img src="docs/screenshots/home-desktop.png" alt="Home page, desktop" width="820">
+</p>
+++++
 
-image::docs/screenshots/subnet-detail-desktop.png[Subnet detail, desktop]
+Subnet detail -- chain metrics, notes editor, six-axis scoring, SVG
+sparkline of the score history:
+
+++++
+<p align="center">
+  <img src="docs/screenshots/subnet-detail-desktop.png" alt="Subnet detail, desktop" width="820">
+</p>
+++++
+
+Filtered home, rank, and settings:
+
+++++
+<p align="center">
+  <img src="docs/screenshots/home-filtered-desktop.png" alt="Home, filtered" width="270">
+  <img src="docs/screenshots/rank-desktop.png"          alt="Rank"           width="270">
+  <img src="docs/screenshots/settings-desktop.png"      alt="Settings"       width="270">
+</p>
+++++
+
+=== Mobile (390 × 844)
 
 The same pages stack cleanly on a phone:
 
-image::docs/screenshots/home-mobile.png[Home, mobile, 320]
-image::docs/screenshots/subnet-detail-mobile.png[Detail, mobile, 320]
+++++
+<p align="center">
+  <img src="docs/screenshots/home-mobile.png"          alt="Home, mobile"     width="200">
+  <img src="docs/screenshots/subnet-detail-mobile.png" alt="Detail, mobile"   width="200">
+  <img src="docs/screenshots/rank-mobile.png"          alt="Rank, mobile"     width="200">
+  <img src="docs/screenshots/settings-mobile.png"      alt="Settings, mobile" width="200">
+</p>
+++++
 
 To regenerate:
 
