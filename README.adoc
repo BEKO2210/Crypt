@@ -27,20 +27,21 @@ toc::[]
 [source,bash]
 ----
 git clone <this repo>
-cd tao-scout
+cd Crypt
 
-uv sync
-alembic upgrade head
-tao-scout doctor          # verifies SDK / RPC / DB
-tao-scout serve           # foreground web UI on http://127.0.0.1:8765
+uv venv --python 3.11 .venv
+uv pip install -e ".[dev]"
+.venv/bin/alembic upgrade head
+.venv/bin/tao-scout doctor    # verifies SDK / RPC / DB
+.venv/bin/tao-scout serve     # foreground web UI on http://127.0.0.1:8765
 ----
 
 In a separate shell, populate the cache:
 
 [source,bash]
 ----
-tao-scout refresh --all
-tao-scout list
+.venv/bin/tao-scout refresh --all
+.venv/bin/tao-scout list
 ----
 
 == Features
