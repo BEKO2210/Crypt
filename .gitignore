@@ -24,6 +24,7 @@ data/tao_scout.db-journal
 data/tao_scout.db-wal
 data/tao_scout.db-shm
 data/exports/
+data/workspaces/
 logs/
 *.log
 

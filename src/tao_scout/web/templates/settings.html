@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Settings · TAO-Scout{% endblock %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-4">Settings</h1>
+<h1 class="text-xl sm:text-2xl font-semibold mb-4">Settings</h1>
 
 {% if saved %}
-<div class="mb-3 rounded border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-900">Saved.</div>
+<div role="status" class="mb-3 rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">Saved.</div>
 {% endif %}
 {% if error %}
-<div class="mb-3 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-900">{{ error }}</div>
+<div role="alert" class="mb-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">{{ error }}</div>
 {% endif %}
 
-<form action="/settings" method="post" class="bg-white border rounded p-4 space-y-4 text-sm">
-  <fieldset>
+<form action="/settings" method="post" class="bg-white border rounded p-4 sm:p-6 space-y-6 text-sm">
+  <fieldset class="space-y-3">
     <legend class="font-semibold">Skill profile</legend>
-    <label class="block mt-2">
-      <span class="text-xs">free-form description</span>
-      <textarea name="skill_profile" rows="3" class="w-full border rounded p-1">{{ user.skill_profile or "" }}</textarea>
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">free-form description</span>
+      <textarea name="skill_profile" rows="3" class="mt-1 w-full border rounded px-2 py-1.5">{{ user.skill_profile or "" }}</textarea>
     </label>
-    <label class="block mt-2">
-      <span class="text-xs">tags (comma-separated)</span>
-      <input name="skill_tags" value="{{ user.skill_tags | join(', ') if user.skill_tags else '' }}" class="w-full border rounded p-1">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">tags <span class="font-normal text-slate-500">(comma-separated)</span></span>
+      <input name="skill_tags" value="{{ user.skill_tags | join(', ') if user.skill_tags else '' }}" class="mt-1 w-full border rounded px-2 py-1.5">
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset class="space-y-3">
     <legend class="font-semibold">Hardware</legend>
-    <label class="block mt-2">
-      <span class="text-xs">profile</span>
-      <select name="hardware_profile" class="w-full border rounded p-1">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">profile</span>
+      <select name="hardware_profile" class="mt-1 w-full border rounded px-2 py-1.5">
         {% for h in ["cpu-only","single-gpu-8gb","single-gpu-24gb","multi-gpu","cluster","unknown"] %}
         <option value="{{ h }}" {% if user.hardware_profile == h %}selected{% endif %}>{{ h }}</option>
         {% endfor %}
@@ -35,36 +35,38 @@
     </label>
   </fieldset>
 
-  <fieldset>
+  <fieldset class="space-y-3">
     <legend class="font-semibold">RPC</legend>
-    <label class="block mt-2">
-      <span class="text-xs">RPC URL override (blank = .env default)</span>
-      <input name="rpc_url" value="{{ user.rpc_url or '' }}" class="w-full border rounded p-1">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">RPC URL override <span class="font-normal text-slate-500">(blank = .env default)</span></span>
+      <input name="rpc_url" value="{{ user.rpc_url or '' }}" inputmode="url" class="mt-1 w-full border rounded px-2 py-1.5">
     </label>
-    <label class="block mt-2">
-      <span class="text-xs">cache TTL (seconds)</span>
-      <input type="number" name="cache_ttl_seconds" min="1"
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">cache TTL <span class="font-normal text-slate-500">(seconds)</span></span>
+      <input type="number" name="cache_ttl_seconds" min="1" inputmode="numeric"
              value="{{ user.cache_ttl_seconds or settings.cache_ttl_seconds }}"
-             class="w-full border rounded p-1">
+             class="mt-1 w-full border rounded px-2 py-1.5">
     </label>
-    <p class="text-xs text-slate-500 mt-1">Effective endpoint: <code>{{ user.rpc_url or settings.rpc_url }}</code></p>
+    <p class="text-xs text-slate-600 break-words">Effective endpoint: <code class="bg-slate-100 px-1 rounded">{{ user.rpc_url or settings.rpc_url }}</code></p>
   </fieldset>
 
-  <fieldset>
-    <legend class="font-semibold">Scoring weights (must sum to 1.0)</legend>
-    <div class="grid md:grid-cols-2 gap-3 mt-2">
+  <fieldset class="space-y-3">
+    <legend class="font-semibold">Scoring weights <span class="font-normal text-slate-600">(must sum to 1.0)</span></legend>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {% for axis in AXES %}
       <label class="block">
-        <span class="text-xs">{{ axis.label }}</span>
-        <input type="number" step="0.01" min="0" max="1"
+        <span class="text-sm font-medium text-slate-700">{{ axis.label }}</span>
+        <input type="number" step="0.01" min="0" max="1" inputmode="decimal"
                name="w_{{ axis.key }}"
                value="{{ user.weights[axis.key] }}"
-               class="w-full border rounded p-1">
+               class="mt-1 w-full border rounded px-2 py-1.5 tabular-nums">
       </label>
       {% endfor %}
     </div>
   </fieldset>
 
-  <button class="bg-slate-900 text-white px-3 py-1 rounded">Save settings</button>
+  <div class="pt-2">
+    <button class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-700 active:bg-slate-800">Save settings</button>
+  </div>
 </form>
 {% endblock %}
